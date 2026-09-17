@@ -12,15 +12,21 @@ public class RecommendationMapping : IEntityTypeConfiguration<Recommendation>
 
         builder.HasKey(r => r.Id);
 
+        builder.Property(p => p.Id)
+            .HasColumnName("id");
+
         builder.Property(r => r.Title)
+            .HasColumnName("title")
             .HasColumnType("text")
             .IsRequired();
 
         builder.Property(r => r.Category)
+            .HasColumnName("category")
             .HasColumnType("text")
             .IsRequired();
 
         builder.Property(r => r.Embedding)
+            .HasColumnName("embedding")
             .HasColumnType("vector(1024)")
             .IsRequired();
     }
