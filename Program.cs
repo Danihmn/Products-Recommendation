@@ -3,6 +3,7 @@ using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
 using Pgvector;
 using ProductsRecommendations.Data;
+using ProductsRecommendations.DTOs.Products;
 using ProductsRecommendations.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,7 +34,7 @@ app.MapGet("v1/seed", async (AppDbContext context, OllamaApiClient ollama) =>
             Embedding = new Vector(embeddings)
         };
 
-        context.Recommendations.Add(recommendation);
+        context.Add(recommendation);
         await context.SaveChangesAsync();
     }
 
@@ -41,6 +42,41 @@ app.MapGet("v1/seed", async (AppDbContext context, OllamaApiClient ollama) =>
     {
         message = "Ok"
     });
+});
+
+app.MapPost("v1/products",
+    async (CreateProductDto dto, AppDbContext context, OllamaApiClient ollama) =>
+    {
+        var product = new Product
+        {
+            Title = dto.Title,
+            Category = dto.Category,
+            Summary = dto.Summary,
+            Description = dto.Description,
+        };
+
+        context.Add(product);
+
+        var service = ollama.AsTextEmbeddingGenerationService();
+        var embedding = await service.GenerateEmbeddingAsync(dto.Category);
+
+        var recommendation = new Recommendation
+        {
+            Title = product.Title,
+            Category = product.Category,
+            Embedding = new Vector(embedding),
+        };
+
+        context.Add(recommendation);
+
+        await context.SaveChangesAsync();
+        return Results.Created();
+    });
+
+app.MapPost("v1/prompt", async (QuestionDto dto, AppDbContext context, OllamaApiClient ollama) =>
+{
+    var service = ollama.AsTextEmbeddingGenerationService();
+    var embeddings = await service.GenerateEmbeddingAsync(dto.Prompt);
 });
 
 app.Run();
