@@ -36,8 +36,9 @@ app.MapGet("v1/seed", async (AppDbContext context, OllamaApiClient ollama) =>
         };
 
         context.Add(recommendation);
-        await context.SaveChangesAsync();
     }
+
+    await context.SaveChangesAsync();
 
     return Results.Ok(new
     {
