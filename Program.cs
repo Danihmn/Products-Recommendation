@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
 using Pgvector;
+using Pgvector.EntityFrameworkCore;
 using ProductsRecommendations.Data;
 using ProductsRecommendations.DTOs.Products;
 using ProductsRecommendations.Models;
@@ -12,7 +13,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<AppDbContext>(x => { x.UseNpgsql(connectionString, p => p.UseVector()); });
 
-builder.Services.AddTransient<OllamaApiClient>(x =>
+builder.Services.AddTransient<OllamaApiClient>(_ =>
     new OllamaApiClient(uriString: "http://localhost:11434", defaultModel: "mxbai-embed-large"));
 
 var app = builder.Build();
@@ -77,6 +78,18 @@ app.MapPost("v1/prompt", async (QuestionDto dto, AppDbContext context, OllamaApi
 {
     var service = ollama.AsTextEmbeddingGenerationService();
     var embeddings = await service.GenerateEmbeddingAsync(dto.Prompt);
+
+    var recommendations = await context.Recommendations
+        .AsNoTracking()
+        .OrderBy(x => x.Embedding
+            .CosineDistance(new Vector(embeddings.ToArray())))
+        .Take(3)
+        .Select(x => new
+        {
+            x.Title, x.Category
+        }).ToListAsync();
+
+    return Results.Ok(recommendations);
 });
 
 app.Run();
